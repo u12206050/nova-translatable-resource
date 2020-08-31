@@ -3,6 +3,11 @@
     "description": "A base Nova Resource to extend resources that use translatable trait.",
     "type": "library",
     "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Day4\\Nova\\": "src/"
+        }
+    },
     "authors": [
         {
             "name": "Gerard Lamusse",

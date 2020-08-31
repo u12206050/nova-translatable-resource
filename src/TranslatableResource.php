@@ -1,12 +1,12 @@
 <?php
 
-namespace Day4\NovaTranslatableResource;
+namespace Day4\Nova;
 
 use Laravel\Nova\Http\Requests\NovaRequest;
 use Laravel\Nova\Resource as NovaResource;
 use Illuminate\Support\Facades\DB;
 
-abstract class NovaTranslatableResource extends NovaResource
+abstract class TranslatableResource extends NovaResource
 {
     /**
      * Return the location to redirect the user after creation.
