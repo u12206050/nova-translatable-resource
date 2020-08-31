@@ -1,0 +1,13 @@
+{
+    "name": "day4/nova-translatable-resource",
+    "description": "A base Nova Resource to extend resources that use translatable trait.",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Gerard Lamusse",
+            "email": "gerard@day4.no"
+        }
+    ],
+    "require": {}
+}
