@@ -7,6 +7,10 @@ Used commonly with:
  - astrotomic/laravel-translatable
  - day4/switch-locale
 
+##
+
+Requires Nova 3
+
 
 ## Install
 
