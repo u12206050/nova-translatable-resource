@@ -2,17 +2,19 @@
 
 namespace Day4\Nova;
 
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 use Laravel\Nova\Http\Requests\NovaRequest;
 use Laravel\Nova\Resource as NovaResource;
-use Illuminate\Support\Facades\DB;
 
 abstract class TranslatableResource extends NovaResource
 {
+    protected static ?array $translationApplied = null;
     /**
      * Return the location to redirect the user after creation.
      *
-     * @param  \Laravel\Nova\Http\Requests\NovaRequest  $request
-     * @param  \Laravel\Nova\Resource  $resource
+     * @param  NovaRequest  $request
+     * @param  NovaResource $resource
      * @return string
      */
     public static function redirectAfterCreate(NovaRequest $request, $resource)
@@ -23,8 +25,8 @@ abstract class TranslatableResource extends NovaResource
     /**
      * Return the location to redirect the user after update.
      *
-     * @param  \Laravel\Nova\Http\Requests\NovaRequest  $request
-     * @param  \Laravel\Nova\Resource  $resource
+     * @param  NovaRequest  $request
+     * @param  NovaResource $resource
      * @return string
      */
     public static function redirectAfterUpdate(NovaRequest $request, $resource)
@@ -32,34 +34,40 @@ abstract class TranslatableResource extends NovaResource
         return '/resources/'.static::uriKey();
     }
 
-    protected static function applyTranslation($query, $columns, $callback, $values = null) {
-        $base = $query->getModel();
-        $baseTable = $base->getTable();
-        $translatedTable = false;
-        $attrs = $base->translatedAttributes;
-        if (!empty($attrs)) {
-            $translatedClass = static::$model . "Translation";
-            $T = new $translatedClass();
-            $translatedTable = $T->getTable();
-            $translatedTableId = "$translatedTable." . str_replace('_translations', '_id', $translatedTable);
+    protected static function applyTranslation($query, $columns, $callback, $values = null)
+    {
+        if (is_null(self::$translationApplied)) {
+            $base = $query->getModel();
+            $baseTable = $base->getTable();
+            $translatedTable = false;
+            $attrs = $base->translatedAttributes;
+            if (!empty($attrs)) {
+                $translatedClass = static::$model . "Translation";
+                $T = new $translatedClass();
+                $translatedTable = $T->getTable();
+                $translatedTableId = "$translatedTable." . str_replace('_translations', '_id', $translatedTable);
 
-            $subQuery = DB::table($translatedTable)->select($translatedTableId);
-            foreach ($columns as $column) {
-                if (in_array($column, $attrs)) {
-                    if (!$base->useTranslationFallback) {
-                        $subQuery->addSelect($column);
-                    } else $subQuery->addSelect(DB::raw("GROUP_CONCAT($column) as $column"));
+                $subQuery = DB::table($translatedTable)->select($translatedTableId);
+                foreach ($columns as $column) {
+                    if (in_array($column, $attrs)) {
+                        if (!$base->useTranslationFallback) {
+                            $subQuery->addSelect($column);
+                        } else $subQuery->addSelect(DB::raw("GROUP_CONCAT($column) as $column"));
+                    }
                 }
+
+                if (!$base->useTranslationFallback) {
+                    $subQuery->where('locale', '=', app()->getLocale());
+                    $subQuery->orWhere('locale', '=', config('translatable.fallback_locale'));
+                } else $subQuery->groupBy(str_replace('_translations', '_id', $translatedTable));
+
+                $query->joinSub($subQuery, $translatedTable, function ($join) use ($translatedTable, $translatedTableId, $baseTable) {
+                    $join->on("$translatedTableId", '=', "$baseTable.id");
+                });
             }
-
-            if (!$base->useTranslationFallback) {
-                $subQuery->where('locale', '=', app()->getLocale());
-                $subQuery->orWhere('locale', '=', config('translatable.fallback_locale'));
-            } else $subQuery->groupBy(str_replace('_translations', '_id', $translatedTable));
-
-            $query->joinSub($subQuery, $translatedTable, function ($join) use ($translatedTable, $translatedTableId, $baseTable) {
-                $join->on("$translatedTableId", '=', "$baseTable.id");
-            });
+            self::$translationApplied = [ $translatedTable, $attrs ];
+        } else {
+            [ $translatedTable, $attrs ] = self::$translationApplied;
         }
 
         foreach ($columns as $column) {
@@ -77,9 +85,9 @@ abstract class TranslatableResource extends NovaResource
     /**
      * Apply the search query to the query.
      *
-     * @param  \Illuminate\Database\Eloquent\Builder  $query
-     * @param  string  $search
-     * @return \Illuminate\Database\Eloquent\Builder
+     * @param  Builder  $query
+     * @param  string   $search
+     * @return Builder
      */
     protected static function applySearch($query, $search)
     {
@@ -97,9 +105,9 @@ abstract class TranslatableResource extends NovaResource
     /**
      * Apply any applicable orderings to the query.
      *
-     * @param  \Illuminate\Database\Eloquent\Builder  $query
-     * @param  array  $orderings
-     * @return \Illuminate\Database\Eloquent\Builder
+     * @param  Builder  $query
+     * @param  array    $orderings
+     * @return Builder
      */
     protected static function applyOrderings($query, array $orderings)
     {

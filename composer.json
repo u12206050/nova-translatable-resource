@@ -14,5 +14,8 @@
             "email": "gerard@day4.no"
         }
     ],
-    "require": {}
+    "require": {
+        "php": ">=7.1.0",
+        "laravel/nova": "^3.0"
+    }
 }
