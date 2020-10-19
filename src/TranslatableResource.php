@@ -2,6 +2,7 @@
 
 namespace Day4\Nova;
 
+use App\TranslatableModel;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Laravel\Nova\Http\Requests\NovaRequest;
@@ -9,7 +10,7 @@ use Laravel\Nova\Resource as NovaResource;
 
 abstract class TranslatableResource extends NovaResource
 {
-    protected static ?array $translationApplied = null;
+    protected static array $translationApplied = [];
     /**
      * Return the location to redirect the user after creation.
      *
@@ -34,11 +35,11 @@ abstract class TranslatableResource extends NovaResource
         return '/resources/'.static::uriKey();
     }
 
-    protected static function applyTranslation($query, $columns, $callback, $values = null)
+    protected static function applyTranslation(Builder $query, $columns, $callback, $values = null)
     {
-        if (is_null(self::$translationApplied)) {
-            $base = $query->getModel();
-            $baseTable = $base->getTable();
+        $base = $query->getModel();
+        $baseTable = $base->getTable();
+        if (! isset(self::$translationApplied[$baseTable])) {
             $translatedTable = false;
             $attrs = $base->translatedAttributes;
             if (!empty($attrs)) {
@@ -65,9 +66,9 @@ abstract class TranslatableResource extends NovaResource
                     $join->on("$translatedTableId", '=', "$baseTable.id");
                 });
             }
-            self::$translationApplied = [ $translatedTable, $attrs ];
+            self::$translationApplied[$baseTable] = [ $translatedTable, $attrs ];
         } else {
-            [ $translatedTable, $attrs ] = self::$translationApplied;
+            [ $translatedTable, $attrs ] = self::$translationApplied[$baseTable];
         }
 
         foreach ($columns as $column) {
@@ -115,8 +116,8 @@ abstract class TranslatableResource extends NovaResource
 
         if (empty($orderings)) {
             return empty($query->getQuery()->orders)
-                        ? $query->latest($query->getModel()->getQualifiedKeyName())
-                        : $query;
+                ? $query->latest($query->getModel()->getQualifiedKeyName())
+                : $query;
         }
 
         return static::applyTranslation($query, array_keys($orderings), function($query, $column, $direction) {
